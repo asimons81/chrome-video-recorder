@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.cinematic-recorder/interaction-events.schema.json",
+  "title": "InteractionSession",
+  "type": "object",
+  "required": ["session", "events"],
+  "properties": {
+    "session": {
+      "type": "object",
+      "required": ["id", "startedAtMs", "tabId", "baseViewport", "capture"],
+      "properties": {
+        "id": { "type": "string" },
+        "startedAtMs": { "type": "number" },
+        "tabId": { "type": "number" },
+        "baseViewport": {
+          "type": "object",
+          "required": ["w", "h", "dpr", "pageScale"],
+          "properties": {
+            "w": { "type": "number" },
+            "h": { "type": "number" },
+            "dpr": { "type": "number" },
+            "pageScale": { "type": "number" }
+          }
+        },
+        "capture": {
+          "type": "object",
+          "required": ["fps", "codec", "withMic", "withTabAudio"],
+          "properties": {
+            "fps": { "type": "number" },
+            "codec": { "type": "string" },
+            "withMic": { "type": "boolean" },
+            "withTabAudio": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tMs", "type", "frameId"],
+        "properties": {
+          "tMs": { "type": "number" },
+          "type": { "enum": ["cursor", "click", "scroll", "viewport"] },
+          "frameId": { "type": "number" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "cursor" } } },
+            "then": {
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "vx": { "type": "number" },
+                "vy": { "type": "number" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "type": { "const": "click" } } },
+            "then": {
+              "required": ["x", "y", "button", "target"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "button": { "type": "number" },
+                "target": { "type": "object" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "type": { "const": "scroll" } } },
+            "then": {
+              "required": ["scroll"],
+              "properties": {
+                "scroll": { "type": "object" },
+                "delta": { "type": "object" }
+              }
+            }
+          },
+          {
+            "if": { "properties": { "type": { "const": "viewport" } } },
+            "then": {
+              "required": ["viewport"],
+              "properties": {
+                "viewport": { "type": "object" }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

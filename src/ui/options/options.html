@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recorder Options</title>
+    <style>
+      body { font-family: "Segoe UI", sans-serif; margin: 24px; }
+      form { display: grid; gap: 12px; max-width: 420px; }
+      label { display: flex; justify-content: space-between; }
+      button { width: 120px; padding: 8px; }
+      #status { color: #0369a1; }
+    </style>
+  </head>
+  <body>
+    <h1>Recorder Defaults</h1>
+    <form id="form">
+      <label><span>Enable Mic by Default</span><input id="withMic" type="checkbox" /></label>
+      <label><span>Include Tab Audio</span><input id="withTabAudio" type="checkbox" /></label>
+      <label><span>Resolution</span>
+        <select id="resolution"><option value="1080p">1080p</option><option value="720p">720p</option></select>
+      </label>
+      <label><span>Quality</span>
+        <select id="qualityPreset"><option value="balanced">Balanced</option><option value="high">High</option></select>
+      </label>
+      <label><span>Easing Preset</span>
+        <select id="easingPreset"><option value="subtle">Subtle</option><option value="medium">Medium</option><option value="spicy">Spicy</option></select>
+      </label>
+      <button type="submit">Save</button>
+      <p id="status"></p>
+    </form>
+    <script type="module" src="./options.js"></script>
+  </body>
+</html>

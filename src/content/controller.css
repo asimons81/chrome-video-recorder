@@ -1,0 +1,44 @@
+#cinematic-recorder-controller {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647;
+  background: rgba(17, 24, 39, 0.92);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+#cinematic-recorder-controller button {
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#cinematic-recorder-controller .stop {
+  background: #dc2626;
+  color: #fff;
+}
+
+#cinematic-recorder-controller .pause {
+  background: #f59e0b;
+  color: #111;
+}
+
+#cinematic-recorder-controller .resume {
+  background: #16a34a;
+  color: #fff;
+}
+
+#cinematic-recorder-controller .time {
+  min-width: 50px;
+  text-align: right;
+  font-weight: 600;
+}

@@ -1,0 +1,121 @@
+:root {
+  --bg: #0b1220;
+  --panel: #131c2f;
+  --line: #243248;
+  --text: #e5edf8;
+  --accent: #22d3ee;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: radial-gradient(circle at 20% 20%, #10233f, var(--bg));
+  color: var(--text);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+.sessions {
+  border-right: 1px solid var(--line);
+  background: rgba(7, 12, 23, 0.7);
+  padding: 16px;
+}
+
+.sessions h2 {
+  margin-top: 0;
+  font-size: 14px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+#sessionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+#sessionList li {
+  border: 1px solid var(--line);
+  background: #0f1a2d;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#sessionList li.active {
+  border-color: var(--accent);
+}
+
+.editor {
+  padding: 18px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+}
+
+.player-wrap {
+  background: #040711;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+#previewCanvas {
+  width: min(100%, 1280px);
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+#sourceVideo {
+  display: none;
+}
+
+.controls {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.controls label {
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+button {
+  border: 1px solid #1f4250;
+  background: linear-gradient(180deg, #1d3a45, #0e2229);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#status {
+  margin: 0;
+  font-size: 12px;
+  color: #8be9ff;
+}

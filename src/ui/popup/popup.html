@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cinematic Recorder</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Cinematic Recorder</h1>
+      <label><input id="withMic" type="checkbox" /> Mic</label>
+      <label><input id="withTabAudio" type="checkbox" checked /> Tab Audio</label>
+      <label>
+        Resolution
+        <select id="resolution">
+          <option value="1080p">1080p</option>
+          <option value="720p">720p</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button id="start">Start</button>
+        <button id="pause">Pause</button>
+        <button id="stop">Stop</button>
+      </div>
+      <div class="actions">
+        <button id="openEditor" class="secondary">Open Editor</button>
+        <button id="openOptions" class="secondary">Options</button>
+      </div>
+      <p id="status"></p>
+    </main>
+    <script type="module" src="./popup.js"></script>
+  </body>
+</html>

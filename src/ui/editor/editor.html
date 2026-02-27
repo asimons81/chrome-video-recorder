@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cinematic Editor</title>
+    <link rel="stylesheet" href="./editor.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sessions">
+        <h2>Sessions</h2>
+        <ul id="sessionList"></ul>
+      </aside>
+      <main class="editor">
+        <div class="player-wrap">
+          <canvas id="previewCanvas" width="1280" height="720"></canvas>
+          <video id="sourceVideo" playsinline></video>
+        </div>
+        <div class="controls">
+          <label>Scrub <input id="scrub" type="range" min="0" max="1000" value="0" /></label>
+          <label>Trim Start (ms) <input id="trimStart" type="number" min="0" value="0" /></label>
+          <label>Trim End (ms) <input id="trimEnd" type="number" min="0" value="0" /></label>
+          <label>Preset
+            <select id="preset">
+              <option value="subtle">Subtle</option>
+              <option value="medium" selected>Medium</option>
+              <option value="spicy">Spicy</option>
+            </select>
+          </label>
+          <div class="button-row">
+            <button id="play">Play/Pause</button>
+            <button id="saveTrim">Save Trim</button>
+            <button id="exportWebm">Export Rendered WebM</button>
+            <button id="exportMp4">Export Rendered MP4</button>
+            <button id="downloadRaw">Download Raw WebM</button>
+            <button id="copyDiagnostics">Copy Diagnostics</button>
+          </div>
+          <p id="status"></p>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="./editor.js"></script>
+  </body>
+</html>
