@@ -1,5 +1,5 @@
 import { MESSAGE, SESSION_STATE, DEFAULT_SETTINGS } from "./shared/constants.js";
-import { getSettings, putSession, log, putEvent } from "./shared/db.js";
+import { getSettings, putSession, log, putEvent, getSession } from "./shared/db.js";
 
 const OFFSCREEN_URL = chrome.runtime.getURL("src/offscreen/offscreen.html");
 
@@ -85,11 +85,14 @@ async function handleMessage(message, sender) {
       return { ok: true };
     case MESSAGE.OFFSCREEN_STOPPED:
       runtimeState.state = SESSION_STATE.READY;
+      clearActiveRecordingState();
       await persistState();
       await broadcastStatus();
       return { ok: true };
     case MESSAGE.OFFSCREEN_ERROR:
       runtimeState.state = SESSION_STATE.ERROR;
+      await markSessionError(runtimeState.sessionId, message.payload?.message || "Recording failed");
+      clearActiveRecordingState();
       await persistState();
       await log("offscreen-error", message.payload || {});
       await broadcastStatus();
@@ -108,9 +111,11 @@ async function startRecording(overrideSettings) {
   if (!tab?.id) {
     return { ok: false, error: "No active tab found" };
   }
+  if (!canRecordUrl(tab.url)) {
+    return { ok: false, error: "Open a normal http(s) tab before starting. Chrome and extension pages cannot be captured." };
+  }
 
   const settings = { ...runtimeState.settings, ...overrideSettings };
-  const streamId = await getTabStreamId(tab.id);
   const sessionId = crypto.randomUUID();
 
   runtimeState.sessionId = sessionId;
@@ -119,9 +124,7 @@ async function startRecording(overrideSettings) {
   runtimeState.state = SESSION_STATE.PROCESSING;
 
   await persistState();
-  await ensureContentScript(tab.id);
-  await ensureOffscreen();
-  await putSession({
+  const baseSession = {
     id: sessionId,
     tabId: tab.id,
     state: SESSION_STATE.RECORDING,
@@ -131,22 +134,35 @@ async function startRecording(overrideSettings) {
     trimStartMs: 0,
     trimEndMs: null,
     durationMs: 0
-  });
+  };
+  await putSession(baseSession);
 
-  await routeToOffscreen({
-    type: MESSAGE.OFFSCREEN_START,
-    payload: {
-      sessionId,
-      tabId: tab.id,
-      streamId,
-      settings,
-      startedAt: runtimeState.startedAt
-    }
-  });
+  try {
+    const streamId = await getTabStreamId(tab.id);
+    await ensureContentScript(tab.id);
+    await ensureOffscreen();
+    await routeToOffscreen({
+      type: MESSAGE.OFFSCREEN_START,
+      payload: {
+        sessionId,
+        tabId: tab.id,
+        streamId,
+        settings,
+        startedAt: runtimeState.startedAt
+      }
+    });
 
-  await chrome.tabs.sendMessage(tab.id, { type: MESSAGE.INJECT_CONTROLLER, payload: { state: "recording" } }).catch(() => {});
-  await broadcastStatus();
-  return { ok: true, sessionId };
+    await chrome.tabs.sendMessage(tab.id, { type: MESSAGE.INJECT_CONTROLLER, payload: { state: "recording" } }).catch(() => {});
+    await broadcastStatus();
+    return { ok: true, sessionId };
+  } catch (error) {
+    await markSessionError(sessionId, error?.message || "Unable to start recording");
+    clearActiveRecordingState();
+    runtimeState.state = SESSION_STATE.ERROR;
+    await persistState();
+    await broadcastStatus();
+    throw error;
+  }
 }
 
 async function stopRecording() {
@@ -219,4 +235,26 @@ async function ensureContentScript(tabId) {
 
 async function routeToOffscreen(message) {
   return chrome.runtime.sendMessage({ source: "sw", target: "offscreen", ...message });
+}
+
+function canRecordUrl(url = "") {
+  return /^https?:\/\//.test(url);
+}
+
+async function markSessionError(sessionId, errorMessage) {
+  if (!sessionId) return;
+  const session = await getSession(sessionId).catch(() => null);
+  if (!session) return;
+  await putSession({
+    ...session,
+    state: SESSION_STATE.ERROR,
+    error: errorMessage,
+    updatedAt: Date.now()
+  });
+}
+
+function clearActiveRecordingState() {
+  runtimeState.sessionId = null;
+  runtimeState.tabId = null;
+  runtimeState.startedAt = 0;
 }

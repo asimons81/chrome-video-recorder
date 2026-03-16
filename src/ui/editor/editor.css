@@ -33,6 +33,14 @@ body {
   text-transform: uppercase;
 }
 
+.sessions-help,
+.controls-help {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #b7c7de;
+}
+
 #sessionList {
   list-style: none;
   margin: 0;

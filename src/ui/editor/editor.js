@@ -44,13 +44,30 @@ const MP4_MIME_CANDIDATES = [
   "video/mp4"
 ];
 
-await loadSessions();
+await init();
 wireEvents();
 applyExportSupport();
+
+async function init() {
+  try {
+    await loadSessions();
+    if (!editorState.sessionId) {
+      setIdleState("No recordings yet. Start a capture from the popup, then return here to export WebM.");
+    }
+  } catch (error) {
+    setIdleState(error?.message || "Editor failed to load saved sessions.");
+  }
+}
 
 async function loadSessions() {
   const sessions = await listSessions();
   sessionListEl.innerHTML = "";
+
+  if (!sessions.length) {
+    clearSessionState();
+    toggleEditorActions(false);
+    return;
+  }
 
   for (const session of sessions) {
     const li = document.createElement("li");
@@ -81,6 +98,7 @@ async function loadSession(sessionId) {
 
   const blob = await getSessionMediaBlob(sessionId);
   if (!blob) {
+    toggleEditorActions(false);
     status.textContent = "No media chunks found for this session.";
     return;
   }
@@ -88,7 +106,7 @@ async function loadSession(sessionId) {
   if (editorState.activeUrl) URL.revokeObjectURL(editorState.activeUrl);
   editorState.activeUrl = URL.createObjectURL(blob);
   sourceVideo.src = editorState.activeUrl;
-  await waitFor(sourceVideo, "loadedmetadata");
+  await waitForMediaMetadata();
 
   editorState.trim.startMs = Math.max(0, editorState.session.trimStartMs || 0);
   const computedEnd = editorState.session.trimEndMs || Math.floor((editorState.session.durationMs || sourceVideo.duration * 1000));
@@ -101,6 +119,7 @@ async function loadSession(sessionId) {
   await seekTo(editorState.trim.startMs / 1000);
   drawFrame(editorState.trim.startMs);
   markActiveSession();
+  toggleEditorActions(true);
   status.textContent = `Loaded session ${sessionId.slice(0, 8)}.`;
 }
 
@@ -120,7 +139,10 @@ function wireEvents() {
   });
 
   playBtn.addEventListener("click", () => {
-    if (!editorState.session || !sourceVideo.duration) return;
+    if (!editorState.session || !sourceVideo.duration) {
+      status.textContent = "Load a recording before previewing.";
+      return;
+    }
 
     if (sourceVideo.paused) {
       const startSec = editorState.trim.startMs / 1000;
@@ -138,13 +160,16 @@ function wireEvents() {
   });
 
   saveTrimBtn.addEventListener("click", async () => {
-    if (!editorState.session) return;
-    const startMs = clamp(Math.floor(Number(trimStart.value || 0)), 0, Math.floor(sourceVideo.duration * 1000));
-    const endMs = clamp(
-      Math.floor(Number(trimEnd.value || 0)),
-      Math.max(startMs + 100, 100),
-      Math.floor(sourceVideo.duration * 1000)
-    );
+    if (!editorState.session) {
+      status.textContent = "Load a recording before saving trim.";
+      return;
+    }
+    const trimValues = validateTrimInputs();
+    if (!trimValues.ok) {
+      status.textContent = trimValues.error;
+      return;
+    }
+    const { startMs, endMs } = trimValues;
 
     editorState.trim = { startMs, endMs };
     editorState.session.trimStartMs = startMs;
@@ -169,13 +194,24 @@ function wireEvents() {
   });
 
   downloadRawBtn.addEventListener("click", async () => {
-    if (!editorState.sessionId) return;
+    if (!editorState.sessionId) {
+      status.textContent = "Load a recording before downloading the raw WebM.";
+      return;
+    }
     const blob = await getSessionMediaBlob(editorState.sessionId);
-    if (!blob) return;
+    if (!blob) {
+      status.textContent = "Raw WebM is not available for this session.";
+      return;
+    }
     downloadBlob(blob, `recording-${editorState.sessionId}.webm`);
+    status.textContent = "Raw WebM download started.";
   });
 
   copyDiagnosticsBtn.addEventListener("click", async () => {
+    if (!editorState.sessionId) {
+      status.textContent = "Load a recording before copying diagnostics.";
+      return;
+    }
     const logs = await listLogs(200);
     const payload = {
       generatedAt: new Date().toISOString(),
@@ -192,8 +228,12 @@ function wireEvents() {
       logs
     };
 
-    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    status.textContent = "Diagnostics copied to clipboard.";
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      status.textContent = "Diagnostics copied to clipboard.";
+    } catch (error) {
+      status.textContent = error?.message || "Clipboard copy failed. Select and copy diagnostics manually from DevTools if needed.";
+    }
   });
 }
 
@@ -455,6 +495,11 @@ function projectEventPointToVideo(event, tMs) {
 
 async function exportRendered(format) {
   if (!editorState.sessionId || !sourceVideo.duration || editorState.exporting) return;
+  const trimValues = validateTrimInputs();
+  if (!trimValues.ok) {
+    throw new Error(trimValues.error);
+  }
+  editorState.trim = { startMs: trimValues.startMs, endMs: trimValues.endMs };
 
   const mimeType = pickExportMimeType(format);
   if (!mimeType) {
@@ -477,6 +522,9 @@ async function exportRendered(format) {
     const fps = 30;
     const canvasStream = canvas.captureStream(fps);
     const mergedTracks = [canvasStream.getVideoTracks()[0]].filter(Boolean);
+    if (!mergedTracks.length) {
+      throw new Error("Canvas capture is unavailable in this Chrome build.");
+    }
 
     const sourceCapture = sourceVideo.captureStream?.();
     const audioTrack = sourceCapture?.getAudioTracks?.()?.[0];
@@ -517,11 +565,16 @@ async function exportRendered(format) {
 
     await stopped;
     const blob = new Blob(chunks, { type: chunks[0]?.type || mimeType });
+    if (!blob.size) {
+      throw new Error("Export completed without media data. Try a shorter recording.");
+    }
     const ext = format === "mp4" ? "mp4" : "webm";
     downloadBlob(blob, `cinematic-${editorState.sessionId}.${ext}`);
 
     status.textContent = `Exported ${format.toUpperCase()} (${Math.round(blob.size / 1024 / 1024)} MB)`;
   } finally {
+    sourceVideo.pause();
+    sourceVideo.volume = 1;
     editorState.exporting = false;
     exportWebmBtn.disabled = false;
     exportMp4Btn.disabled = !pickExportMimeType("mp4");
@@ -582,6 +635,11 @@ async function seekTo(timeSec) {
   await waitFor(sourceVideo, "seeked");
 }
 
+async function waitForMediaMetadata() {
+  if (sourceVideo.readyState >= 1 && Number.isFinite(sourceVideo.duration)) return;
+  await waitFor(sourceVideo, "loadedmetadata");
+}
+
 function waitFor(target, eventName) {
   return new Promise((resolve) => {
     const done = () => {
@@ -594,6 +652,76 @@ function waitFor(target, eventName) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function validateTrimInputs() {
+  if (!editorState.session || !sourceVideo.duration) {
+    return { ok: false, error: "Load a recording before trimming or exporting." };
+  }
+
+  const durationMs = Math.floor(sourceVideo.duration * 1000);
+  const startMs = Number(trimStart.value);
+  const endMs = Number(trimEnd.value);
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    return { ok: false, error: "Trim values must be valid numbers." };
+  }
+  if (startMs < 0 || endMs < 0) {
+    return { ok: false, error: "Trim values cannot be negative." };
+  }
+  if (startMs >= endMs) {
+    return { ok: false, error: "Trim end must be greater than trim start." };
+  }
+  if (endMs - startMs < 250) {
+    return { ok: false, error: "Trimmed clip must be at least 250 ms long." };
+  }
+
+  return {
+    ok: true,
+    startMs: clamp(Math.floor(startMs), 0, durationMs),
+    endMs: clamp(Math.floor(endMs), 0, durationMs)
+  };
+}
+
+function clearSessionState() {
+  cancelAnimationFrame(editorState.raf);
+  if (editorState.activeUrl) {
+    URL.revokeObjectURL(editorState.activeUrl);
+    editorState.activeUrl = null;
+  }
+  editorState.sessionId = null;
+  editorState.session = null;
+  editorState.events = [];
+  editorState.clicks = [];
+  editorState.cursor = [];
+  editorState.scrolls = [];
+  editorState.viewports = [];
+  editorState.clickClusters = [];
+  editorState.trim = { startMs: 0, endMs: 0 };
+  sourceVideo.removeAttribute("src");
+  sourceVideo.load();
+  trimStart.value = "0";
+  trimEnd.value = "0";
+  scrub.value = "0";
+}
+
+function setIdleState(message) {
+  clearSessionState();
+  toggleEditorActions(false);
+  status.textContent = message;
+}
+
+function toggleEditorActions(enabled) {
+  playBtn.disabled = !enabled;
+  saveTrimBtn.disabled = !enabled;
+  exportWebmBtn.disabled = !enabled;
+  downloadRawBtn.disabled = !enabled;
+  copyDiagnosticsBtn.disabled = !enabled;
+  scrub.disabled = !enabled;
+  trimStart.disabled = !enabled;
+  trimEnd.disabled = !enabled;
+  presetEl.disabled = !enabled;
+  exportMp4Btn.disabled = !enabled || !pickExportMimeType("mp4");
 }
 
 function easeOutCubic(t) {

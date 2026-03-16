@@ -3,6 +3,8 @@
   let state = "idle";
   let timerInterval = null;
   let startedAt = 0;
+  let pausedAt = 0;
+  let totalPausedMs = 0;
   let cursorSampleTs = 0;
   let lastCursor = { x: 0, y: 0, t: 0 };
   let lastScroll = { x: window.scrollX, y: window.scrollY };
@@ -145,12 +147,17 @@
         pause.textContent = "Resume";
         pause.className = "resume";
         state = "paused";
+        pausedAt = Date.now();
         return;
       }
       await chrome.runtime.sendMessage({ type: "RESUME_RECORDING" });
       pause.textContent = "Pause";
       pause.className = "pause";
       state = "recording";
+      if (pausedAt) {
+        totalPausedMs += Date.now() - pausedAt;
+        pausedAt = 0;
+      }
     });
 
     stop.addEventListener("click", async () => {
@@ -159,7 +166,8 @@
     });
 
     timerInterval = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const effectiveNow = state === "paused" ? pausedAt : Date.now();
+      const elapsed = Math.floor(Math.max(0, effectiveNow - startedAt - totalPausedMs) / 1000);
       const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
       const ss = String(elapsed % 60).padStart(2, "0");
       time.textContent = `${mm}:${ss}`;
@@ -170,6 +178,8 @@
 
   function destroyController() {
     state = "idle";
+    pausedAt = 0;
+    totalPausedMs = 0;
     const root = document.getElementById(controllerId);
     if (root) root.remove();
     if (timerInterval) {

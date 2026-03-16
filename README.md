@@ -1,55 +1,81 @@
-# Cinematic Tab Recorder (MV3)
+# Cinematic Tab Recorder v0.1
 
-A Chrome Extension (Manifest V3) that records the active tab using an offscreen pipeline, captures cursor/click interaction metadata, and exports polished WebM with cinematic zoom-to-click overlays.
+Chrome Extension (Manifest V3) for local-first tab recording with captured interaction data and a lightweight editor that exports rendered WebM.
 
-## Implemented
+## v0.1 Scope
 
-- MV3 architecture with service worker + offscreen document
+This release is intentionally narrow:
+
+- Record the current `http://` or `https://` tab
+- Capture cursor, clicks, scroll, and viewport changes during recording
+- Trim and preview sessions in the editor
+- Export a rendered WebM with zoom-to-click, cursor halo, and click ripple overlays
+- Save default recording options from the options page
+
+Explicitly out of scope for v0.1:
+
+- MP4 as a supported release path
+- Cloud upload or sharing
+- Advanced timeline editing or multi-segment edits
+- Major architecture rewrites
+
+## What Works
+
+- MV3 service worker + offscreen recording pipeline
 - Current-tab capture via `chrome.tabCapture.getMediaStreamId`
-- Optional mic + tab audio mixing in offscreen pipeline
-- Chunked WebM recording to IndexedDB (1s chunks)
-- Floating in-tab controller (pause/resume/stop + timer)
-- Interaction metadata capture in content script:
-  - cursor samples (~30Hz)
-  - click targets + bbox + scroll context
-  - viewport/scroll events
-- Editor page:
-  - session browser
-  - instant preview canvas
-  - non-destructive trim (`trimStartMs`/`trimEndMs`)
-  - easing presets (`subtle`, `medium`, `spicy`)
-  - rendered WebM export with zoom-to-click + cursor halo + click ripple
-  - capability-gated rendered MP4 export (when `MediaRecorder` MP4 is supported)
-  - raw WebM download
-  - copy diagnostics (session summary + local logs)
-- Options page for defaults
+- Optional mic and tab-audio capture
+- IndexedDB chunk storage for recorded WebM data
+- Floating in-page controller with pause, resume, stop, and timer
+- Editor session list, scrubber, non-destructive trim, and preset selection
+- Raw WebM download
+- Diagnostics copy for troubleshooting
+- Options page for default mic, audio, resolution, quality, and easing values
 
-## Not Yet Implemented
+## Install
 
-- MP4 export path (WebCodecs + MP4 muxing)
-- MP4 fallback mux path independent of `MediaRecorder` MP4 support
-- advanced timeline segment editing
-- cloud share link flow
-- multi-pass render acceleration and robust fallback matrix
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Select this repository folder:
+   `/home/tony/.openclaw/workspace/repos/chrome-video-recorder`
+5. Pin the extension if you want faster access while testing.
 
-## Load in Chrome
+## First Run
 
-1. Open `chrome://extensions`
-2. Enable Developer mode
-3. Click **Load unpacked**
-4. Select this folder:
-   - `/home/tony/.openclaw/workspace/projects/chrome-screen-recorder`
+1. Open a normal website tab (`http://` or `https://`).
+2. Open the extension popup.
+3. Confirm mic, tab audio, and resolution settings.
+4. Click **Start** and approve Chrome capture permissions if prompted.
+5. Use the floating controller on the page to pause, resume, or stop.
+6. Open **Editor** from the popup after the recording finishes processing.
 
-## Usage
+## Editor Workflow
 
-1. Open extension popup and click **Start**
-2. Use floating controller to pause/resume/stop
-3. Open **Editor** from popup
-4. Select session, set trim + preset
-5. Export rendered WebM or download raw WebM
+1. Select a saved session.
+2. Preview the capture in the canvas player.
+3. Adjust `Trim Start` and `Trim End` in milliseconds.
+4. Click **Save Trim** to persist the non-destructive trim.
+5. Click **Export Rendered WebM** for the supported release export.
+6. Use **Download Raw WebM** if you need the original capture output.
 
-## Notes
+## Known Limitations
 
-- This is local-first; no network upload path is used.
-- For best results, keep recording sessions moderate length on typical laptops.
-- Rendered export currently focuses on visual polish; raw download preserves original capture output.
+- Only the active browser tab is supported.
+- Chrome internal pages, the Chrome Web Store, and extension pages cannot be recorded.
+- WebM is the supported export format for v0.1.
+- MP4 may appear only if a Chrome build exposes `MediaRecorder` MP4 support, but it is not part of the release promise.
+- Long recordings can consume substantial IndexedDB storage and export time.
+- Diagnostics copy depends on clipboard permission being available in the editor page context.
+
+## Troubleshooting
+
+- If recording fails immediately, retry from a normal website tab instead of a Chrome or extension page.
+- If you enabled mic capture, make sure Chrome microphone access is allowed.
+- If export fails or produces an empty file, retry with a shorter trim range and export WebM.
+- If you need support data, open the editor and use **Copy Diagnostics**.
+
+## Release Readiness
+
+The repo now has basic validation and clearer failure states for popup start/stop flow, trim/export actions, settings persistence, and unsupported-tab errors.
+
+Before tagging v0.1, run the manual checklist in [RELEASE_SCOPE.md](/home/tony/.openclaw/workspace/repos/chrome-video-recorder/RELEASE_SCOPE.md).

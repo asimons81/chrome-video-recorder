@@ -53,9 +53,14 @@ async function startRecorder(payload) {
   recorderState.tabId = tabId;
   recorderState.startedAt = startedAt;
   recorderState.seq = 0;
-  recorderState.captureStream = await getTabStream(streamId, settings);
-  recorderState.micStream = settings.withMic ? await navigator.mediaDevices.getUserMedia({ audio: true }) : null;
-  recorderState.mixedStream = await makeMixedStream(recorderState.captureStream, recorderState.micStream, settings);
+  try {
+    recorderState.captureStream = await getTabStream(streamId, settings);
+    recorderState.micStream = settings.withMic ? await navigator.mediaDevices.getUserMedia({ audio: true }) : null;
+    recorderState.mixedStream = await makeMixedStream(recorderState.captureStream, recorderState.micStream, settings);
+  } catch (error) {
+    cleanupStreams();
+    throw error;
+  }
 
   recorderState.mimeType = pickMimeType();
   const recorder = new MediaRecorder(recorderState.mixedStream, {
@@ -210,6 +215,10 @@ function cleanupStreams() {
   });
   recorderState.audioContext?.close?.();
 
+  recorderState.sessionId = null;
+  recorderState.tabId = null;
+  recorderState.startedAt = 0;
+  recorderState.seq = 0;
   recorderState.captureStream = null;
   recorderState.micStream = null;
   recorderState.mixedStream = null;
