@@ -46,11 +46,82 @@ button.secondary {
   grid-column: span 3;
 }
 
+/* ── State indicator banner ─────────────────────────────────────────── */
+.state-indicator {
+  display: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+main[data-state="recording"] .state-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+main[data-state="recording"] .state-indicator::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  animation: rec-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.25; transform: scale(0.75); }
+}
+
+main[data-state="paused"] .state-indicator {
+  display: block;
+  background: rgba(249, 115, 22, 0.15);
+  color: #fdba74;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+main[data-state="processing"] .state-indicator {
+  display: block;
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+main[data-state="ready"] .state-indicator {
+  display: block;
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+main[data-state="error"] .state-indicator {
+  display: block;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  font-size: 11px;
+}
+
+/* ── Status text color by state ─────────────────────────────────────── */
 #status {
   font-size: 12px;
   margin: 0;
   color: #bfdbfe;
 }
+
+main[data-state="recording"] #status  { color: #fca5a5; }
+main[data-state="paused"] #status     { color: #fdba74; }
+main[data-state="processing"] #status { color: #93c5fd; }
+main[data-state="ready"] #status      { color: #86efac; }
+main[data-state="error"] #status      { color: #fca5a5; }
 
 .hint {
   margin: 0;

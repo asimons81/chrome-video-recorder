@@ -2,10 +2,11 @@
   "manifest_version": 3,
   "name": "Cinematic Tab Recorder",
   "description": "Record current tab with polished cursor and cinematic zoom-to-click effects.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "permissions": [
     "activeTab",
     "tabCapture",
+    "alarms",
     "offscreen",
     "storage",
     "downloads",

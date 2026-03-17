@@ -22,6 +22,7 @@ const downloadRawBtn = document.getElementById("downloadRaw");
 const copyDiagnosticsBtn = document.getElementById("copyDiagnostics");
 const presetEl = document.getElementById("preset");
 const status = document.getElementById("status");
+const requestedSessionId = new URLSearchParams(window.location.search).get("sessionId");
 
 const editorState = {
   sessionId: null,
@@ -51,7 +52,10 @@ applyExportSupport();
 async function init() {
   try {
     await loadSessions();
-    if (!editorState.sessionId) {
+    if (requestedSessionId && !editorState.sessionId) {
+      await loadSession(requestedSessionId);
+    }
+    if (!editorState.sessionId && !requestedSessionId) {
       setIdleState("No recordings yet. Start a capture from the popup, then return here to export WebM.");
     }
   } catch (error) {
@@ -65,7 +69,7 @@ async function loadSessions() {
 
   if (!sessions.length) {
     clearSessionState();
-    toggleEditorActions(false);
+    toggleSessionActions(false);
     return;
   }
 
@@ -78,7 +82,7 @@ async function loadSessions() {
     sessionListEl.appendChild(li);
   }
 
-  if (!editorState.sessionId && sessions.length) {
+  if (!editorState.sessionId && !requestedSessionId && sessions.length) {
     await loadSession(sessions[0].id);
   }
 }
@@ -89,6 +93,12 @@ async function loadSession(sessionId) {
 
   editorState.sessionId = sessionId;
   editorState.session = await getSession(sessionId);
+  if (!editorState.session) {
+    clearSessionState();
+    status.textContent = `Session ${sessionId.slice(0, 8)} is missing from storage. Recording may not have finalized.`;
+    toggleSessionActions(false);
+    return;
+  }
   editorState.events = (await listEvents(sessionId)).sort((a, b) => a.tMs - b.tMs);
   editorState.clicks = editorState.events.filter((event) => event.type === "click");
   editorState.cursor = editorState.events.filter((event) => event.type === "cursor");
@@ -98,8 +108,7 @@ async function loadSession(sessionId) {
 
   const blob = await getSessionMediaBlob(sessionId);
   if (!blob) {
-    toggleEditorActions(false);
-    status.textContent = "No media chunks found for this session.";
+    handleIncompleteSession(editorState.session);
     return;
   }
 
@@ -119,7 +128,7 @@ async function loadSession(sessionId) {
   await seekTo(editorState.trim.startMs / 1000);
   drawFrame(editorState.trim.startMs);
   markActiveSession();
-  toggleEditorActions(true);
+  toggleSessionActions(true);
   status.textContent = `Loaded session ${sessionId.slice(0, 8)}.`;
 }
 
@@ -707,21 +716,50 @@ function clearSessionState() {
 
 function setIdleState(message) {
   clearSessionState();
-  toggleEditorActions(false);
+  toggleSessionActions(false);
   status.textContent = message;
 }
 
-function toggleEditorActions(enabled) {
+function toggleSessionActions(enabled) {
   playBtn.disabled = !enabled;
   saveTrimBtn.disabled = !enabled;
   exportWebmBtn.disabled = !enabled;
   downloadRawBtn.disabled = !enabled;
-  copyDiagnosticsBtn.disabled = !enabled;
   scrub.disabled = !enabled;
   trimStart.disabled = !enabled;
   trimEnd.disabled = !enabled;
   presetEl.disabled = !enabled;
   exportMp4Btn.disabled = !enabled || !pickExportMimeType("mp4");
+  copyDiagnosticsBtn.disabled = !editorState.sessionId;
+}
+
+function handleIncompleteSession(session) {
+  if (editorState.activeUrl) {
+    URL.revokeObjectURL(editorState.activeUrl);
+    editorState.activeUrl = null;
+  }
+  sourceVideo.removeAttribute("src");
+  sourceVideo.load();
+  trimStart.value = "0";
+  trimEnd.value = "0";
+  scrub.value = "0";
+  markActiveSession();
+  toggleSessionActions(false);
+  status.textContent = describeIncompleteSession(session);
+}
+
+function describeIncompleteSession(session) {
+  const shortId = session?.id ? session.id.slice(0, 8) : "unknown";
+  if (!session) {
+    return "This session is missing from storage.";
+  }
+  if (session.state === "error") {
+    return `Session ${shortId} failed: ${session.error || "Recording failed before media was saved."}`;
+  }
+  if (session.state === "processing" || session.state === "recording" || session.state === "paused") {
+    return `Session ${shortId} is incomplete. Stop/finalization has not produced a playable media file yet.`;
+  }
+  return `Session ${shortId} has no playable media chunks. Copy diagnostics from this page for failure details.`;
 }
 
 function easeOutCubic(t) {

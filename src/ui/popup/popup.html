@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="./popup.css" />
   </head>
   <body>
-    <main>
+    <main data-state="idle">
       <h1>Cinematic Recorder</h1>
+      <div id="stateIndicator" class="state-indicator" aria-live="polite"></div>
       <label><input id="withMic" type="checkbox" /> Mic</label>
       <label><input id="withTabAudio" type="checkbox" checked /> Tab Audio</label>
       <label>
